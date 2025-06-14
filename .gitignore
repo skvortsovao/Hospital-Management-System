@@ -1,0 +1,24 @@
+# Visual Studio files
+.vs/
+*.user
+*.suo
+
+# Build output
+bin/
+obj/
+
+# NuGet
+packages/
+*.nupkg
+*.snupkg
+
+# User secrets & config
+*.db
+*.bak
+*.sqlite
+*.mdf
+*.ldf
+
+# OS junk
+Thumbs.db
+.DS_Store
