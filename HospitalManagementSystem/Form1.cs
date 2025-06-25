@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -66,7 +66,26 @@ namespace HospitalManagementSystem
                 Role = role,
                 Approved = isAutoApproved
             };
+            if (role == "patient")
+            {
+                // Add patient to SQL
+                using (var context = new HospitalContext())
+                {
+                    var patient = new Patient
+                    {
+                        FirstName = username, // You can change this to include first/last name fields
+                        LastName = "", // Optional
+                        Gender = "",    // Optional
+                        ContactInfo = "",
+                        DateOfBirth = DateTime.Now,
+                        MedicalHistory = ""
+                    };
+                    context.Patients.Add(patient);
+                    context.SaveChanges();
 
+                    newUser.PatientId = patient.Id; // Link patient to user
+                }
+            }
             MongoHelper.UsersCollection.InsertOne(newUser); // Insert user to MongoDB
 
             if (!isAutoApproved)
@@ -108,7 +127,7 @@ namespace HospitalManagementSystem
             }
 
             MessageBox.Show($"Welcome {user.Role}, {user.Username}!");
-            Dashboard dashboard = new Dashboard(user.Username, user.Role);
+            Dashboard dashboard = new Dashboard(user.Username, user.Role, user.PatientId ?? 0);
             dashboard.Show();
             this.Hide();// hide login window
         }
