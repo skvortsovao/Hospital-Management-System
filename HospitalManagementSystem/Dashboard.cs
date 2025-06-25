@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -15,12 +15,14 @@ namespace HospitalManagementSystem
         // Store role and username for permission control and display
         private string _role;
         private string _username;
+        private int _patientId;
         // Constructor receives username and role from login
-        public Dashboard(string username, string role)
+        public Dashboard(string username, string role, int patientId)
         {
             InitializeComponent();
             _role = role;
             _username = username;
+            _patientId = patientId;
         }
         
 
@@ -73,7 +75,7 @@ namespace HospitalManagementSystem
         //Open appointment management form
         private void btnAppointments_Click(object sender, EventArgs e)
         {
-            FormAppointments appointmentsForm = new FormAppointments();
+            FormAppointments appointmentsForm = new FormAppointments(_role, _patientId);
             appointmentsForm.ShowDialog();
         }
 
