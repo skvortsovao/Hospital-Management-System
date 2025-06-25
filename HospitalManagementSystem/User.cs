@@ -1,4 +1,4 @@
-﻿using MongoDB.Bson;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 public class User
@@ -18,4 +18,7 @@ public class User
 
     [BsonElement("approved")]
     public bool Approved { get; set; }
+
+    [BsonElement("patientId")]
+    public int? PatientId { get; set; } // Link to SQL Server patient ID
 }
