@@ -1,4 +1,4 @@
-﻿// FormAppointments.cs - full code for managing appointments
+// FormAppointments.cs
 using System;
 using System.Data;
 using System.Linq;
@@ -6,36 +6,44 @@ using System.Windows.Forms;
 using System.Data.Entity;
 using HospitalManagementSystem.DataAccess;
 using Microsoft.AspNet.SignalR.Client;
-using System.Net;
 using System.Threading.Tasks;
 
 namespace HospitalManagementSystem
 {
     public partial class FormAppointments : Form
     {
+        private readonly int _patientId;
+        private readonly string _role;
         HubConnection connection;
         IHubProxy hub;
-        public FormAppointments()
+
+        public FormAppointments(string role, int patientId)
         {
             InitializeComponent();
+            _role = role;
+            _patientId = patientId;
         }
 
         private async void FormAppointments_Load(object sender, EventArgs e)
         {
-            
             LoadPatients();
             LoadAppointments();
             cmbStatus.Items.AddRange(new string[] { "Scheduled", "Completed", "Cancelled" });
             cmbStatus.SelectedIndex = 0;
 
-            //Setup SignalR connection
+            if (_role == "patient")
+            {
+                btnAdd.Visible = false;
+                btnUpdate.Visible = false;
+                btnDelete.Visible = false;
+                cmbPatient.Enabled = false;
+            }
+
             connection = new HubConnection("http://localhost:8080");
             hub = connection.CreateHubProxy("AppointmentHub");
 
-            //When a broadcast is received, reload the data grid
             hub.On<string>("receiveAppointment", (message) =>
             {
-                
                 LoadAppointments();
             });
 
@@ -48,6 +56,7 @@ namespace HospitalManagementSystem
                 MessageBox.Show("SignalR connection failed: " + ex.Message);
             }
         }
+
         private void LoadPatients()
         {
             using (var context = new HospitalContext())
@@ -68,8 +77,14 @@ namespace HospitalManagementSystem
             {
                 using (var context = new HospitalContext())
                 {
-                    var appointments = context.Appointments
-                        .Include(a => a.Patient)
+                    var query = context.Appointments.Include(a => a.Patient).AsQueryable();
+
+                    if (_role == "patient")
+                    {
+                        query = query.Where(a => a.PatientId == _patientId);
+                    }
+
+                    var appointments = query
                         .Select(a => new
                         {
                             a.Id,
@@ -119,10 +134,7 @@ namespace HospitalManagementSystem
 
                 context.Appointments.Add(appointment);
                 context.SaveChanges();
-                if (hub != null)
-                {
-                    hub.Invoke("SendAppointmentUpdate").Wait();
-                }
+                hub?.Invoke("SendAppointmentUpdate").Wait();
             }
 
             LoadAppointments();
@@ -141,7 +153,6 @@ namespace HospitalManagementSystem
                     var appointment = context.Appointments.Find(id);
                     if (appointment != null)
                     {
-                        // Validate required fields
                         if (string.IsNullOrWhiteSpace(txtDoctorName.Text) ||
                             string.IsNullOrWhiteSpace(txtReason.Text) ||
                             cmbStatus.SelectedItem == null ||
@@ -158,19 +169,7 @@ namespace HospitalManagementSystem
                         appointment.PatientId = Convert.ToInt32(cmbPatient.SelectedValue);
 
                         context.SaveChanges();
-
-                        // SignalR update (non-async way with exception handling)
-                        if (hub != null)
-                        {
-                            try
-                            {
-                                hub.Invoke("SendAppointmentUpdate").Wait(); // blocks until done
-                            }
-                            catch (Exception ex)
-                            {
-                                MessageBox.Show("Failed to notify SignalR hub: " + ex.Message);
-                            }
-                        }
+                        try { hub?.Invoke("SendAppointmentUpdate").Wait(); } catch { }
 
                         LoadAppointments();
                         ClearFields();
@@ -185,7 +184,6 @@ namespace HospitalManagementSystem
             if (dgvAppointments.CurrentRow != null)
             {
                 int id = Convert.ToInt32(dgvAppointments.CurrentRow.Cells["Id"].Value);
-
                 using (var context = new HospitalContext())
                 {
                     var appointment = context.Appointments.Find(id);
@@ -200,10 +198,7 @@ namespace HospitalManagementSystem
                 ClearFields();
                 MessageBox.Show("Appointment deleted.");
             }
-            if (hub != null)
-            {
-                hub.Invoke("SendAppointmentUpdate").Wait();
-            }
+            hub?.Invoke("SendAppointmentUpdate").Wait();
         }
 
         private void dgvAppointments_CellClick(object sender, DataGridViewCellEventArgs e)
@@ -238,14 +233,10 @@ namespace HospitalManagementSystem
             }
         }
 
-
         private void btnClear_Click(object sender, EventArgs e)
         {
             ClearFields();
-            if (hub != null)
-            {
-                hub.Invoke("SendAppointmentUpdate").Wait();
-            }
+            hub?.Invoke("SendAppointmentUpdate").Wait();
         }
 
         private void ClearFields()
